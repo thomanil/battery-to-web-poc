@@ -1,6 +1,9 @@
 package com.example.battery2web
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
@@ -30,6 +33,18 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    /**
+     * Function to restart the application
+     */
+    fun restartApp() {
+        val packageManager = packageManager
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        val componentName = intent?.component
+        val mainIntent = Intent.makeRestartActivityTask(componentName)
+        startActivity(mainIntent)
+        Runtime.getRuntime().exit(0)
+    }
 }
 
 @Composable
@@ -50,13 +65,39 @@ fun WebViewScreen(url: String?, modifier: Modifier = Modifier) {
                     allowFileAccess = true
                 }
 
+                // Set up JavaScript interface to communicate with Kotlin
+                addJavascriptInterface(WebAppInterface(context), "Android")
+
                 // Set a WebChromeClient to handle JavaScript dialogs
                 setWebChromeClient(android.webkit.WebChromeClient())
 
                 if (!url.isNullOrBlank()) {
                     loadUrl(url)
                 } else {
-                    val htmlContent = """
+                    loadDataWithBaseURL(null, localTestharnessWebPage, "text/html", "UTF-8", null)
+                }
+            }
+        }
+    )
+}
+
+
+/**
+ * JavaScript interface for communication between WebView and Android
+ */
+class WebAppInterface(private val context: Context) {
+
+    @JavascriptInterface
+    fun restartApplication() {
+        // Cast context to Activity and call restartApp
+        if (context is MainActivity) {
+            context.restartApp()
+        }
+    }
+}
+
+
+val localTestharnessWebPage = """
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -77,24 +118,48 @@ fun WebViewScreen(url: String?, modifier: Modifier = Modifier) {
                                 border-radius: 8px;
                                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                             }
+                            button {
+                                background-color: #3498db;
+                                color: white;
+                                border: none;
+                                padding: 10px 15px;
+                                border-radius: 4px;
+                                font-size: 16px;
+                                cursor: pointer;
+                                margin-bottom: 10px;
+                            }
+                            button:active {
+                                background-color: #2980b9;
+                            }
+                            .warning {
+                                background-color: #e74c3c;
+                            }
                         </style>
                     </head>
                     <body>
                         <div class="container">
                             <h1>Hello from Local HTML</h1>
                             <p>This is a local HTML page loaded in the WebView.</p>
-                            <button onclick="alert('Button clicked!')">Click Me</button>
+                            <button onclick="showAlert()">Click Me</button>
+                            <button onclick="restartApp()" class="warning">Restart App</button>
                         </div>
+                        
+                        <script type="text/javascript">
+                            function showAlert() {
+                                alert('Button clicked! JavaScript is working.');
+                            }
+                            
+                            function restartApp() {
+                                if (confirm('Are you sure you want to restart the app?')) {
+                                    // Call Android method using interface
+                                    Android.restartApplication();
+                                }
+                            }
+                        </script>
                     </body>
                     </html>
                 """.trimIndent()
 
-                    loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
-                }
-            }
-        }
-    )
-}
 
 @Preview(showBackground = true)
 @Composable
@@ -103,3 +168,4 @@ fun WebViewPreview() {
         WebViewScreen("https://example.com")
     }
 }
+
