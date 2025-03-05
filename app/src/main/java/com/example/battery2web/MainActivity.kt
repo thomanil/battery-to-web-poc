@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
             Battery2WebTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     WebViewScreen(
-                        url = "https://example.com", // Your hardcoded URL here
+                        url = "", //"https://example.com"
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -33,14 +33,64 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
+fun WebViewScreen(url: String?, modifier: Modifier = Modifier) {
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
             WebView(context).apply {
                 webViewClient = WebViewClient()
                 settings.javaScriptEnabled = true
-                loadUrl(url)
+
+                // Configure WebView settings
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    javaScriptCanOpenWindowsAutomatically = true
+                    allowContentAccess = true
+                    allowFileAccess = true
+                }
+
+                // Set a WebChromeClient to handle JavaScript dialogs
+                setWebChromeClient(android.webkit.WebChromeClient())
+
+                if (!url.isNullOrBlank()) {
+                    loadUrl(url)
+                } else {
+                    val htmlContent = """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Local HTML Page</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {
+                                font-family: Arial, sans-serif;
+                                margin: 20px;
+                                background-color: #f0f0f0;
+                            }
+                            h1 {
+                                color: #2c3e50;
+                            }
+                            .container {
+                                background-color: white;
+                                padding: 20px;
+                                border-radius: 8px;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h1>Hello from Local HTML</h1>
+                            <p>This is a local HTML page loaded in the WebView.</p>
+                            <button onclick="alert('Button clicked!')">Click Me</button>
+                        </div>
+                    </body>
+                    </html>
+                """.trimIndent()
+
+                    loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+                }
             }
         }
     )
@@ -50,6 +100,6 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
 @Composable
 fun WebViewPreview() {
     Battery2WebTheme {
-        WebViewScreen("https://vg.com")
+        WebViewScreen("https://example.com")
     }
 }
